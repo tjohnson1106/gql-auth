@@ -22,3 +22,5 @@ const postSchema = new Schema({
     ref: "users"
   }
 });
+
+module.exports = model("Post", postSchema);
