@@ -6,7 +6,7 @@ const {
   validateRegisterInput,
   validateLoginInput
 } = require("../../utils/validators");
-const SECRET_KEY = require("../../../config");
+const { SECRET_KEY } = require("../../../config");
 const User = require("../../models/User");
 
 function generateToken(user) {
@@ -16,11 +16,8 @@ function generateToken(user) {
       email: user.email,
       username: user.username
     },
-    // why is this failing sans JSON.stringify?
     JSON.stringify(SECRET_KEY),
-    {
-      expiresIn: "2d"
-    }
+    { expiresIn: "1h" }
   );
 }
 
@@ -37,17 +34,13 @@ module.exports = {
 
       if (!user) {
         errors.general = "User not found";
-        throw new UserInputError("User not found", {
-          errors
-        });
+        throw new UserInputError("User not found", { errors });
       }
 
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
-        errors.general = "Incorrect credentials";
-        throw new UserInputError("Incorrect credentials", {
-          errors
-        });
+        errors.general = "Wrong crendetials";
+        throw new UserInputError("Wrong crendetials", { errors });
       }
 
       const token = generateToken(user);
@@ -64,19 +57,17 @@ module.exports = {
         registerInput: { username, email, password, confirmPassword }
       }
     ) {
-      // TODO: Validate user data
+      // Validate user data
       const { valid, errors } = validateRegisterInput(
         username,
         email,
         password,
         confirmPassword
       );
-
       if (!valid) {
         throw new UserInputError("Errors", { errors });
       }
-
-      // TODO: Make sure user doesn't exist
+      // TODO: Make sure user doesnt already exist
       const user = await User.findOne({ username });
       if (user) {
         throw new UserInputError("Username is taken", {
@@ -98,6 +89,7 @@ module.exports = {
       const res = await newUser.save();
 
       const token = generateToken(res);
+
       return {
         ...res._doc,
         id: res._id,
