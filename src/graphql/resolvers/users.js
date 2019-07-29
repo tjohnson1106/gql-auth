@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { UserInputError } = require("apollo-server");
 
+const { validateRegisterInput } = require("../../utils/validators");
 const SECRET_KEY = require("../../../config");
 const User = require("../../models/User");
 
@@ -10,12 +12,29 @@ module.exports = {
       _,
       {
         registerInput: { username, email, password, confirmPassword }
-      },
-      context,
-      info
+      }
     ) {
       // TODO: Validate user data
+      const { valid, errors } = validateRegisterInput(
+        username,
+        email,
+        password,
+        confirmPassword
+      );
+
+      if (!valid) {
+        throw new UserInputError("Errors", { errors });
+      }
+
       // TODO: Make sure user doesn't exist
+      const user = await User.findOne({ username });
+      if (user) {
+        throw new UserInputError("Username is taken", {
+          errors: {
+            username: "This username is taken"
+          }
+        });
+      }
       // hash password and create an auth token
       password = await bcrypt.hash(password, 12);
 
@@ -34,9 +53,10 @@ module.exports = {
           email: res.email,
           username: res.username
         },
-        SECRET_KEY,
+        // why is this failing sans JSON.stringify?
+        JSON.stringify(SECRET_KEY),
         {
-          expiresIn: "1h"
+          expiresIn: "2d"
         }
       );
       return {
